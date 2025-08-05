@@ -16,7 +16,7 @@
 ## 模型
 |模型一|模型二|模型三|模型四|模型五|模型六|模型七|
 | :---: | :--- | :--- | :--- | :---: | :--- | :---: |
-|stacking：xgb/lgb(元模型逻辑回归)|stacking:xgb/lgb|stacking:lgb|voting:lgb|lgb十折交叉验证|voting:xgb/lgb|xgb:十折交叉验证|
+|stacking：xgb/lgb(元模型逻辑回归)|stacking:xgb/lgb|stacking:lgb|voting:lgb|lgb:十折交叉验证|voting:xgb/lgb|xgb:十折交叉验证|
 
 ## 测试集提交方案
 - 根据阈值将七个模型结果分别映射到0和1上，然后对行取众数得到最终的结果（硬投票）  
