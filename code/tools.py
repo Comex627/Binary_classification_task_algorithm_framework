@@ -35,7 +35,28 @@ def map_willingness_to_score(probabilities, base_score=600, pdo=20, target_odds=
     return np.round(scores).astype(int)
 
 
-
+#自定义损失函数处理类别不平衡问题
+def focal_loss_lgb(y_pred, dtrain):
+    """（返回梯度和二阶导数）"""
+    y_true = dtrain.get_label()
+    alpha = 0.25  # 平衡因子
+    gamma = 2.0   # 聚焦参数
+    
+    # 将预测值转换为概率（sigmoid激活）
+    p = 1.0 / (1.0 + np.exp(-y_pred))
+    p = np.clip(p, 1e-15, 1 - 1e-15)  # 避免数值溢出
+    
+    # 计算Focal Loss的梯度和二阶导数
+    # 公式参考：https://arxiv.org/abs/1708.02002
+    pt = y_true * p + (1 - y_true) * (1 - p)  # p_t
+    alpha_t = y_true * alpha + (1 - y_true) * (1 - alpha)  # α_t
+    
+    # 梯度（一阶导数）
+    gradient = -alpha_t * (1 - pt)**gamma * (y_true - p)
+    # 二阶导数
+    hessian = alpha_t * (1 - pt)**gamma * p * (1 - p) * (gamma * pt + 1)
+    
+    return gradient, hessian  # 必须返回梯度和二阶导数
 
 
 
