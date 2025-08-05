@@ -42,6 +42,29 @@ def get_cross_fe(df):
             df[col_name] = df[feat_1].astype(str) + '_' + df[feat_2].astype(str)
     return df
 
+
+
+#减少内存消耗，对int64和float64类型做处理
+
+
+def downcast_int(data,_list):
+    int_downcast = data.select_dtypes(include = ['int64']).columns
+    for col in _list:
+        data[col] =pd.to_numeric(data[col], downcast='integer')
+        
+    return data
+
+def downcast_float(data,_list):
+    float_downcast = data.select_dtypes(include = ['float64']).columns
+    for col in _list:
+        data[col] =pd.to_numeric(data[col], downcast='float')
+        
+    return data
+
+
+
+
+
 # 唯一值统计特征
 def get_nunique_1_fe(df):
     adid_nuq = ['hour', 'E1', 'E14', 'B2', 'B3']
@@ -107,9 +130,6 @@ def process_features(train, test, label):
     data = pd.concat([train, test], ignore_index=True)
     
 
-    
-
-   
     
     # 应用特征工程
     data = get_time_fe(data)
