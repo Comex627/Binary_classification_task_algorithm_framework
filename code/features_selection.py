@@ -11,6 +11,82 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.filterwarnings('ignore')
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
+
+
+# 提取时间特征
+def get_time_fe(df):
+    df['day'] = df['date'].apply(lambda x: int(x[8:10]))
+    df['hour'] = df['date'].apply(lambda x: int(x[11:13]))
+    return df
+
+# 时间分箱(当前代码未实际使用，保留定义)
+def getSeg(x):
+    if 0 <= x <= 3:
+        return 1
+    elif 4 <= x <= 12:
+        return 2
+    elif 13 <= x <= 18:
+        return 3
+    elif 19 <= x <= 23:
+        return 1
+
+# 交叉特征
+cross_feature = []
+def get_cross_fe(df):
+    first_feature = ['B2', 'B3']
+    second_feature = ['C1', 'C2', 'C3', 'D1', 'A1', 'A2', 'A3']
+    for feat_1 in first_feature:
+        for feat_2 in second_feature:
+            col_name = f"cross_{feat_1}_and_{feat_2}"
+            cross_feature.append(col_name)
+            df[col_name] = df[feat_1].astype(str) + '_' + df[feat_2].astype(str)
+    return df
+
+# 唯一值统计特征
+def get_nunique_1_fe(df):
+    adid_nuq = ['hour', 'E1', 'E14', 'B2', 'B3']
+    for feat in adid_nuq:
+        gp1 = df.groupby('A2')[feat].nunique().reset_index().rename(
+            columns={feat: f"A2_{feat}_nuq_num"})
+        gp2 = df.groupby(feat)['A2'].nunique().reset_index().rename(
+            columns={'A2': f"{feat}_A2_nuq_num"})
+        df = pd.merge(df, gp1, how='left', on='A2')
+        df = pd.merge(df, gp2, how='left', on=feat)
+    return df
+
+def get_nunique_2_fe(df):
+    adid_nuq = ['E1', 'E14']
+    for feat in adid_nuq:
+        gp1 = df.groupby('hour')[feat].nunique().reset_index().rename(
+            columns={feat: f"hour_{feat}_nuq_num"})
+        gp2 = df.groupby(feat)['hour'].nunique().reset_index().rename(
+            columns={'hour': f"{feat}_hour_nuq_num"})
+        df = pd.merge(df, gp1, how='left', on='hour')
+        df = pd.merge(df, gp2, how='left', on=feat)
+    return df
+
+def get_nunique_4_fe(df):
+    adid_nuq = ['B2', 'B3']
+    for feat in adid_nuq:
+        gp1 = df.groupby('A1')[feat].nunique().reset_index().rename(
+            columns={feat: f"A1_{feat}_nuq_num"})
+        gp2 = df.groupby(feat)['A1'].nunique().reset_index().rename(
+            columns={'A1': f"{feat}_A1_nuq_num"})
+        df = pd.merge(df, gp1, how='left', on='A1')
+        df = pd.merge(df, gp2, how='left', on=feat)
+    return df
+
+# 计数特征
+def feature_count(data, features):
+    new_feature = f"count_{'_'.join(features)}"
+    if new_feature in data.columns:
+        del data[new_feature]
+    temp = data.groupby(features).size().reset_index().rename(columns={0: new_feature})
+    return data.merge(temp, 'left', on=features)
+
+
+
+
 def process_features(train, test, label):
     """
     特征工程处理函数
@@ -30,76 +106,10 @@ def process_features(train, test, label):
     test['label'] = -1  # 标记测试集标签
     data = pd.concat([train, test], ignore_index=True)
     
-    # 提取时间特征
-    def get_time_fe(df):
-        df['day'] = df['date'].apply(lambda x: int(x[8:10]))
-        df['hour'] = df['date'].apply(lambda x: int(x[11:13]))
-        return df
+
     
-    # 时间分箱(当前代码未实际使用，保留定义)
-    def getSeg(x):
-        if 0 <= x <= 3:
-            return 1
-        elif 4 <= x <= 12:
-            return 2
-        elif 13 <= x <= 18:
-            return 3
-        elif 19 <= x <= 23:
-            return 1
-    
-    # 交叉特征
-    cross_feature = []
-    def get_cross_fe(df):
-        first_feature = ['B2', 'B3']
-        second_feature = ['C1', 'C2', 'C3', 'D1', 'A1', 'A2', 'A3']
-        for feat_1 in first_feature:
-            for feat_2 in second_feature:
-                col_name = f"cross_{feat_1}_and_{feat_2}"
-                cross_feature.append(col_name)
-                df[col_name] = df[feat_1].astype(str) + '_' + df[feat_2].astype(str)
-        return df
-    
-    # 唯一值统计特征
-    def get_nunique_1_fe(df):
-        adid_nuq = ['hour', 'E1', 'E14', 'B2', 'B3']
-        for feat in adid_nuq:
-            gp1 = df.groupby('A2')[feat].nunique().reset_index().rename(
-                columns={feat: f"A2_{feat}_nuq_num"})
-            gp2 = df.groupby(feat)['A2'].nunique().reset_index().rename(
-                columns={'A2': f"{feat}_A2_nuq_num"})
-            df = pd.merge(df, gp1, how='left', on='A2')
-            df = pd.merge(df, gp2, how='left', on=feat)
-        return df
-    
-    def get_nunique_2_fe(df):
-        adid_nuq = ['E1', 'E14']
-        for feat in adid_nuq:
-            gp1 = df.groupby('hour')[feat].nunique().reset_index().rename(
-                columns={feat: f"hour_{feat}_nuq_num"})
-            gp2 = df.groupby(feat)['hour'].nunique().reset_index().rename(
-                columns={'hour': f"{feat}_hour_nuq_num"})
-            df = pd.merge(df, gp1, how='left', on='hour')
-            df = pd.merge(df, gp2, how='left', on=feat)
-        return df
-    
-    def get_nunique_4_fe(df):
-        adid_nuq = ['B2', 'B3']
-        for feat in adid_nuq:
-            gp1 = df.groupby('A1')[feat].nunique().reset_index().rename(
-                columns={feat: f"A1_{feat}_nuq_num"})
-            gp2 = df.groupby(feat)['A1'].nunique().reset_index().rename(
-                columns={'A1': f"{feat}_A1_nuq_num"})
-            df = pd.merge(df, gp1, how='left', on='A1')
-            df = pd.merge(df, gp2, how='left', on=feat)
-        return df
-    
-    # 计数特征
-    def feature_count(data, features):
-        new_feature = f"count_{'_'.join(features)}"
-        if new_feature in data.columns:
-            del data[new_feature]
-        temp = data.groupby(features).size().reset_index().rename(columns={0: new_feature})
-        return data.merge(temp, 'left', on=features)
+
+   
     
     # 应用特征工程
     data = get_time_fe(data)
