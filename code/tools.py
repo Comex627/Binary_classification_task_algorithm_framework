@@ -35,7 +35,33 @@ def map_willingness_to_score(probabilities, base_score=600, pdo=20, target_odds=
     return np.round(scores).astype(int)
 
 
-#自定义损失函数处理类别不平衡问题
+
+
+#自定义损失函数的本质是模型对多数类“过度关注”，对少数类“关注度不足”自定义损失函数的核心是增加少数类样本的错误惩罚权重，
+#常见方式包括：
+#直接在损失计算中为少数类分配更高权重
+#调整正负样本的梯度贡献比例
+
+#加权交叉熵（Weighted Cross-Entropy）
+
+# XGBoost自定义损失（带权重的对数损失）
+def weighted_logistic_loss(y_true, y_pred):
+    pos_weight = 10.0
+    y_pred = 1.0 / (1.0 + np.exp(-y_pred))  # XGB输出为logit，需转换为概率
+    grad = (y_pred - y_true) * (y_true * pos_weight + (1 - y_true))  # 梯度
+    hess = y_pred * (1 - y_pred) * (y_true * pos_weight + (1 - y_true))  # 二阶导数
+    return grad, hess
+
+# LightGBM自定义损失（格式类似，需返回梯度和二阶导数）
+def lgb_weighted_loss(y_true, y_pred):
+    pos_weight = 10.0
+    grad = (y_pred - y_true) * (y_true * pos_weight + (1 - y_true))
+    hess = y_pred * (1 - y_pred) * (y_true * pos_weight + (1 - y_true))
+    return grad, hess
+
+
+#Focal Loss（焦点损失）
+
 def focal_loss_lgb(y_pred, dtrain):
     """（返回梯度和二阶导数）"""
     y_true = dtrain.get_label()
@@ -57,6 +83,81 @@ def focal_loss_lgb(y_pred, dtrain):
     hessian = alpha_t * (1 - pt)**gamma * p * (1 - p) * (gamma * pt + 1)
     
     return gradient, hessian  # 必须返回梯度和二阶导数
+
+
+# XGBoost需返回梯度和二阶导数
+def xgb_focal_loss(y_true, y_pred):
+    alpha = 0.9
+    gamma = 2.0
+    y_pred = 1.0 / (1.0 + np.exp(-y_pred))  # 转换为概率
+    
+    # 梯度
+    grad = (y_pred - y_true) * (alpha * y_true * np.power(1 - y_pred, gamma) + 
+                               (1 - alpha) * (1 - y_true) * np.power(y_pred, gamma))
+    # 二阶导数（简化版）
+    hess = np.abs(grad) * 0.1  # 可根据实际情况优化
+    return grad, hess
+
+
+#加权 Hinge Loss（适用于二分类）对于希望输出类别标签（而非概率）的场景，可使用加权 Hinge Loss，增强对少数类错误的惩罚
+def weighted_hinge_loss(y_true, y_pred):
+    # 假设y_true为1（少数类）和-1（多数类）
+    pos_weight = 5.0
+    margin = 1.0
+    loss = np.maximum(0, margin - y_true * y_pred)
+    # 为少数类（y_true=1）增加权重
+    loss = np.where(y_true == 1, loss * pos_weight, loss)
+    return np.mean(loss)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
